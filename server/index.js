@@ -12,12 +12,12 @@ mongoose.connect(DB_URI, {
     serverSelectionTimeoutMS: 5000, 
     socketTimeoutMS: 45000,
 }).catch(err => {
-    console.error("❌ Initial connection error:", err.message);
+    console.error("Initial connection error:", err.message);
 });
 
 const db = mongoose.connection;
-db.on('error', (err) => console.error('❌ MongoDB connection error:', err));
-db.once('open', () => console.log('✅ Connected to MongoDB Atlas'));
+db.on('error', (err) => console.error('MongoDB connection error:', err));
+db.once('open', () => console.log('Connected to MongoDB Atlas'));
 
 const COLLECTION_NAME = 'DiakAdatok'; 
 
@@ -50,10 +50,20 @@ app.get('/api/diakok', async (req, res) => {
         
         res.json(diakok);
     } catch (err) {
-        console.error('❌ Error during database query:', err.message);
+        console.error('Error during database query:', err.message);
         res.status(500).json({ message: 'Server error fetching students data.', error: err.message });
+    }
+});
+app.post('/api/diakok', async (req, res) => {
+    try {
+        const newDiak = new Diak(req.body);
+        await newDiak.save();
+        res.status(201).json(newDiak);
+    } catch (err) {
+        console.error('Error during document insertion:', err.message);
+        res.status(500).json({ message: 'Server error saving student data.', error: err.message });
     }
 });
 
 const PORT = 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
