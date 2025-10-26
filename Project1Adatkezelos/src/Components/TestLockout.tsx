@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import axios from "axios";
 
+// NOTE: Ensure DEFAULT_SUBJECTS matches the array in your backend code!
+const DEFAULT_SUBJECTS = ["Magyar", "Matematika", "Történelem", "Angol"];
+
 // 1. Define the Diak (Student) Interface
 interface Diak {
   _id: string; 
@@ -32,9 +35,13 @@ interface NewDiakData {
 function App() {
   const [diakok, setDiakok] = useState<Diak[]>([]);
   const [loading, setLoading] = useState(false);
-  
-  // ⭐️ 1. NEW STATE: To track the currently selected student for detailed view
   const [selectedDiak, setSelectedDiak] = useState<Diak | null>(null);
+
+  // NEW STATE: For adding a new mark
+  const [newMark, setNewMark] = useState({
+    tantargy: DEFAULT_SUBJECTS[0] || '',
+    jegy: '1', // Default mark value
+  });
 
   const [newDiakData, setNewDiakData] = useState<NewDiakData>({
     nev: "",
@@ -46,12 +53,12 @@ function App() {
     kolis: false,
   });
 
-  // ⭐️ 2. NEW HANDLER: Function to set the selected student
   const handleSelectDiak = (diak: Diak) => {
     setSelectedDiak(diak);
+    // Reset mark form when opening details
+    setNewMark({ tantargy: Object.keys(diak.tantárgyak)[0] || DEFAULT_SUBJECTS[0] || '', jegy: '1' });
   };
   
-  // Function to close the details panel
   const handleCloseDetails = () => {
     setSelectedDiak(null);
   };
@@ -76,6 +83,11 @@ function App() {
     }));
   };
 
+  const handleMarkInputChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setNewMark(prev => ({ ...prev, [name]: value }));
+  };
+
   const addDiak = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -83,23 +95,45 @@ function App() {
         ...newDiakData,
         id: new Date().getTime().toString(), 
         szuletesi_hely: "N/A",
-        tantárgyak: {}, 
+        // tantárgyak will be initialized on the backend
       };
 
       const res = await axios.post<Diak>("http://localhost:5000/api/diakok", diakToSend);
       
       setDiakok(prev => [...prev, res.data]);
-      setNewDiakData({ 
-          nev: "", 
-          nyelv: "", 
-          anyja_neve: "", 
-          szuletesi_ido: "", 
-          évfolyam: "", 
-          osztály: "", 
-          kolis: false 
-      });
+      setNewDiakData({ nev: "", nyelv: "", anyja_neve: "", szuletesi_ido: "", évfolyam: "", osztály: "", kolis: false });
     } catch (err) {
       console.error("Error adding diák:", err);
+    }
+  };
+
+  // ⭐️ NEW HANDLER: Function to submit the new mark
+  const addMark = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedDiak) return;
+    
+    try {
+        const res = await axios.post<Diak>(
+            `http://localhost:5000/api/diakok/${selectedDiak._id}/mark`,
+            newMark
+        );
+
+        const updatedDiak = res.data;
+
+        // 1. Update the main diakok list
+        setDiakok(prevDiakok => 
+            prevDiakok.map(d => (d._id === updatedDiak._id ? updatedDiak : d))
+        );
+
+        // 2. Update the currently displayed selectedDiak
+        setSelectedDiak(updatedDiak);
+
+        // Reset the mark input
+        setNewMark(prev => ({ ...prev, jegy: '1' })); 
+
+    } catch (err) {
+        console.error("Error adding mark:", err);
+        alert("Hiba történt a jegy hozzáadásakor.");
     }
   };
 
@@ -110,7 +144,8 @@ function App() {
           Diák Adatkezelő
         </h1>
 
-        {/* --- ADD NEW DIÁK FORM --- */}
+        {/* --- ADD NEW DIÁK FORM (omitted for brevity, assume it's here) --- */}
+        {/* ... */}
         <div className="bg-gray-700 p-4 rounded-xl mb-6">
             <h3 className="text-xl font-semibold mb-3 text-blue-300">Új Diák hozzáadása</h3>
             <form onSubmit={addDiak} className="grid grid-cols-2 gap-4">
@@ -130,7 +165,6 @@ function App() {
                 </button>
             </form>
         </div>
-
         {/* --- FETCH BUTTON --- */}
         <button
           onClick={fetchDiakok}
@@ -140,12 +174,11 @@ function App() {
           {loading ? "Betöltés..." : "Diákok lekérése"}
         </button>
 
-        {/* --- DIÁK LIST --- */}
+        {/* --- DIÁK LIST (omitted for brevity, assume it's here) --- */}
         <div className="space-y-4">
           {diakok.length === 0 && !loading && (
             <p className="text-center text-gray-400">Nincs elérhető adat.</p>
           )}
-
           {diakok.map((diak) => ( 
             <div
               key={diak._id || diak.id}
@@ -153,7 +186,6 @@ function App() {
             >
               <h2 
                 className="text-xl font-semibold text-blue-300 cursor-pointer hover:text-blue-200"
-                // ⭐️ 3. CLICK HANDLER: Call the function to show details
                 onClick={() => handleSelectDiak(diak)}
               >
                 {diak.nev}
@@ -167,7 +199,7 @@ function App() {
         </div>
       </div>
 
-      {/* ⭐️ 4. DETAILED VIEW / MODAL FOR SELECTED DIAK */}
+      {/* ⭐️ DETAILED VIEW / MODAL FOR SELECTED DIAK WITH ADD MARK FORM */}
       {selectedDiak && (
         <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
           <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto">
@@ -179,35 +211,20 @@ function App() {
                 onClick={handleCloseDetails}
                 className="text-gray-400 hover:text-white text-2xl font-light"
               >
-                &times; {/* Close button */}
+                &times; 
               </button>
             </div>
 
+            {/* General Details (omitted for brevity, assume it's here) */}
             <div className="space-y-3 text-gray-300">
-              <p>
-                <span className="font-semibold text-blue-300">ID:</span> {selectedDiak.id}
-              </p>
-              <p>
-                <span className="font-semibold text-blue-300">Anyja neve:</span> {selectedDiak.anyja_neve}
-              </p>
-              <p>
-                <span className="font-semibold text-blue-300">Születési hely:</span> {selectedDiak.szuletesi_hely}
-              </p>
-              <p>
-                <span className="font-semibold text-blue-300">Születési idő:</span> {selectedDiak.szuletesi_ido}
-              </p>
-              <p>
-                <span className="font-semibold text-blue-300">Évfolyam/Osztály:</span> {selectedDiak.évfolyam}.{selectedDiak.osztály}
-              </p>
-              <p>
-                <span className="font-semibold text-blue-300">Nyelv:</span> {selectedDiak.nyelv}
-              </p>
-              <p>
-                <span className="font-semibold text-blue-300">Kollégista:</span> {selectedDiak.kolis ? 'Igen' : 'Nem'}
-              </p>
-              
-              {/* Tantárgyak Details */}
-              <div className="mt-4 pt-4 border-t border-gray-700">
+                {/* ... existing general details ... */}
+                <p><span className="font-semibold text-blue-300">Anyja neve:</span> {selectedDiak.anyja_neve}</p>
+                <p><span className="font-semibold text-blue-300">Születési hely:</span> {selectedDiak.szuletesi_hely}</p>
+                <p><span className="font-semibold text-blue-300">Születési idő:</span> {selectedDiak.szuletesi_ido}</p>
+            </div>
+
+            {/* Tantárgyak Details */}
+            <div className="mt-4 pt-4 border-t border-gray-700">
                 <h3 className="font-semibold text-xl text-blue-400 mb-3">Tantárgyak és Jegyek:</h3>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   {Object.entries(selectedDiak.tantárgyak).map(([tantargy, jegyek]) => (
@@ -220,8 +237,46 @@ function App() {
                     </div>
                   ))}
                 </div>
-              </div>
+            </div>
 
+            {/* ⭐️ NEW: ADD MARK FORM */}
+            <div className="mt-6 pt-4 border-t border-gray-700">
+                <h3 className="font-semibold text-xl text-green-400 mb-3">Jegy hozzáadása</h3>
+                <form onSubmit={addMark} className="grid grid-cols-3 gap-3">
+                    <select
+                        name="tantargy"
+                        value={newMark.tantargy}
+                        onChange={handleMarkInputChange}
+                        required
+                        className="p-2 bg-gray-700 rounded text-white col-span-1"
+                    >
+                        {/* Use the keys from the selected Diak's tantárgyak object for options */}
+                        {Object.keys(selectedDiak.tantárgyak).map(tantargy => (
+                            <option key={tantargy} value={tantargy}>{tantargy}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        name="jegy"
+                        value={newMark.jegy}
+                        onChange={handleMarkInputChange}
+                        required
+                        className="p-2 bg-gray-700 rounded text-white col-span-1"
+                    >
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                    </select>
+
+                    <button
+                        type="submit"
+                        className="py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium transition col-span-1"
+                    >
+                        Mentés
+                    </button>
+                </form>
             </div>
           </div>
         </div>
