@@ -3,8 +3,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 
 const app = express();
+
 app.use(cors());
-// ⚠️ CRITICAL: Middleware to parse JSON body for POST/PUT requests
 app.use(express.json()); 
 
 const DB_URI = 'mongodb+srv://msaso0725_db_user:Z9lY66ImIs4hwyhx@adatkezelo.otlp11o.mongodb.net/DiakAdatok?retryWrites=true&w=majority&appName=Adatkezelo';

@@ -227,15 +227,22 @@ function App() {
             <div className="mt-4 pt-4 border-t border-gray-700">
                 <h3 className="font-semibold text-xl text-blue-400 mb-3">Tantárgyak és Jegyek:</h3>
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  {Object.entries(selectedDiak.tantárgyak).map(([tantargy, jegyek]) => (
-                    <div
-                      key={tantargy}
-                      className="bg-gray-700 p-3 rounded-lg shadow-inner"
-                    >
-                      <p className="font-medium text-blue-300">{tantargy}</p>
-                      <p className="text-gray-400">Jegyek: {jegyek.join(", ")}</p>
-                    </div>
-                  ))}
+                  {Object.entries(selectedDiak.tantárgyak).map(([tantargy, jegyek]) => {
+                    // Sum up the marks (jegyek are strings) and compute average
+                    const sum = jegyek.reduce((acc, j) => acc + (Number(j) || 0), 0);
+                    const avg = jegyek.length ? sum / jegyek.length : 0;
+
+                    return (
+                      <div
+                        key={tantargy}
+                        className="bg-gray-700 p-3 rounded-lg shadow-inner"
+                      >
+                        <p className="font-medium text-blue-300">{tantargy}</p>
+                        <p className="text-gray-400">Jegyek: {jegyek.join(", ")}</p>
+                        <p>{avg >= 1.65 ? '' : '💀'}</p>
+                      </div>
+                    );
+                  })}
                 </div>
             </div>
 
