@@ -41,12 +41,10 @@ const diakSchema = new mongoose.Schema({
 
 const Diak = mongoose.model('Diak', diakSchema, COLLECTION_NAME); 
 
-// --- Configuration: Subjects to initialize for new students ---
-// Use the subjects that exist in your database or should be standard.
 const DEFAULT_SUBJECTS = ["Magyar", "Matematika", "Történelem", "Angol"];
 
 
-// --- 1. GET ALL DIAKOK API ---
+
 app.get('/api/diakok', async (req, res) => {
     try {
         const diakok = await Diak.find({}).lean(); 
@@ -58,10 +56,9 @@ app.get('/api/diakok', async (req, res) => {
     }
 });
 
-// --- 2. ADD NEW DIAK API (Modified to initialize subjects) ---
+
 app.post('/api/diakok', async (req, res) => {
     try {
-        // Initialize tantárgyak object with empty arrays for all default subjects
         const initialTantargy = DEFAULT_SUBJECTS.reduce((acc, subject) => {
             acc[subject] = [];
             return acc;
@@ -69,7 +66,7 @@ app.post('/api/diakok', async (req, res) => {
 
         const newDiak = new Diak({
             ...req.body,
-            tantárgyak: initialTantargy, // Overwrite placeholder with initialized subjects
+            tantárgyak: initialTantargy,
         });
 
         await newDiak.save();
@@ -80,7 +77,7 @@ app.post('/api/diakok', async (req, res) => {
     }
 });
 
-// --- 3. ADD NEW MARK API (NEW ENDPOINT) ---
+
 app.post('/api/diakok/:id/mark', async (req, res) => {
     const diakId = req.params.id; // The Mongoose _id
     const { tantargy, jegy } = req.body;
@@ -96,8 +93,6 @@ app.post('/api/diakok/:id/mark', async (req, res) => {
             return res.status(404).json({ message: 'Student not found.' });
         }
 
-        // Use $push to append the new mark to the array within the tantárgyak object
-        // The path must be constructed dynamically: "tantárgyak.SubjectName"
         const update = {
             $push: { [`tantárgyak.${tantargy}`]: jegy }
         };
