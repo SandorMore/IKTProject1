@@ -21,7 +21,7 @@ db.on('error', (err) => console.error('MongoDB connection error:', err));
 db.once('open', () => console.log('Connected to MongoDB Atlas'));
 
 const COLLECTION_NAME = 'DiakAdatok'; 
-
+//diak séma
 const diakSchema = new mongoose.Schema({
     id: String,
     nev: String,
